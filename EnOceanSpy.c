@@ -12,50 +12,26 @@
 #include <fcntl.h>	// Used for UART
 #include <termios.h>	// Used for UART
 #include "time.h"
+#include <stdlib.h>
+#include <curl/curl.h>
 
 //#define USB300 "/dev/ttyAMA0"  // default EnOcean device
-
-
-static void print_hexbytes(const unsigned char *bytes, int nbytes)
-{
-
-	int i;
-	for (i = 0; i < nbytes; i++)
-		printf("%02X ", bytes[i]);
-	printf("\n");
-}
-
-static void printDate()
-{
-	time_t tm;
-	struct tm *ltime;
-
-	time( &tm );
-	ltime = localtime( &tm );
-	ltime->tm_mon++;
-	ltime->tm_year += 1900;
-
-	printf( "%04i-%02i-%02i %02i:%02i:%02i  ", ltime->tm_year,
-    		ltime->tm_mon, ltime->tm_mday, ltime->tm_hour, ltime->tm_min, ltime->tm_sec );
-}
-
-
 
 main( int argc, char *argv[] )
 {
 	printf("Starting EnOceanSpy...\n");
 
 	// Check number of args
-	if (argc > 2 || argc <=1 ) 
+	if (argc > 2 || argc <=1 )
 	{
 		printf("Usage: EnOceanSpy <port_name>\n");
 		printf("       e.g. EnOceanSpy /dev/ttyUSB0 \n");
 		return -1;
-	}	
+	}
 
 
-	// Check content of args	
-	if ((strcmp(argv[1], "/dev/ttyUSB0") != 0) 
+	// Check content of args
+	if ((strcmp(argv[1], "/dev/ttyUSB0") != 0)
 		&& (strcmp(argv[1], "/dev/ttyAMA0") !=0) )
 	{
 		printf("Error: %s is not a valid port name!\n", argv[1]);
@@ -90,27 +66,77 @@ main( int argc, char *argv[] )
 		if (uart0_filestream != -1)
 		{
 			// Give Raspberry a chance and wait before read :)
-	        	sleep(1);
+						sleep(1);
 
-	        	// Read up to 255 characters from comport if they are there
-	        	unsigned char rx_buffer[256];
-	        	int rx_length = read(uart0_filestream, (void*)rx_buffer, 255);
-	        	if (rx_length < 0)
-	        	{
-	        		// An error occurs if there are no bytes
-	        		//printf("No bytes received");
+						// Read up to 255 characters from comport if they are there
+						unsigned char rx_buffer[256];
+
+						int rx_length = read(uart0_filestream, (void*)rx_buffer, 255);
+
+						if (rx_length < 0)
+						{
+							// An error occurs if there are no bytes
+							//printf("No bytes received");
+						}
+						else if (rx_length == 0)
+						{
+									// If there are no data then ignore and wait
+						}
+						else if (rx_length == 24)
+						{
+							// Some bytes received
+									rx_buffer[rx_length] = '\0';
+									struct tm *utc;
+									time_t t;
+									t = time(NULL);
+								 	utc = localtime(&t);
+
+									char dt[80];
+									strftime(dt, 80, "%Y-%m-%dT%H:%M:%S%z", utc);
+
+									double volt, hum, temp, volt_multiply_by;
+
+									// volt
+									volt_multiply_by = 0.0258039;
+									volt = volt_multiply_by * rx_buffer[7];
+
+									// humidity
+									hum = (double)rx_buffer[8] / 2.5;
+
+									// temperature
+									temp = 0.32 * (double)rx_buffer[9] - 20.0;
+
+									char json[115];
+
+									sprintf(json, "{\"timestamp\":\"%s\",\"temp\":%.1f,\"hum\":%.1f,\"batt\":%.1f,\"raw_bytes\":\"%02X%02X%02X\"}", dt, temp, hum, volt, rx_buffer[7],rx_buffer[8], rx_buffer[9]);
+									printf("%s\n", json);
+									CURL *curl;
+									CURLcode res;
+
+									curl_global_init(CURL_GLOBAL_DEFAULT);
+
+									curl = curl_easy_init();
+									if(curl) {
+									struct curl_slist *headers = NULL;
+									headers = curl_slist_append(headers, "Accept: application/json");
+									headers = curl_slist_append(headers, "Content-Type: application/json");
+									headers = curl_slist_append(headers, "charsets: utf-8");
+									curl_easy_setopt(curl, CURLOPT_URL, "<KEEN IO POST URL>");
+									curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+									curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json);
+									res = curl_easy_perform(curl);
+									/* Check for errors */
+									if(res != CURLE_OK)
+										 fprintf(stderr, "curl_easy_perform() failed: %s\n",
+										 curl_easy_strerror(res));
+
+									/* always cleanup */
+									curl_easy_cleanup(curl);
+					}
+
+					curl_global_cleanup();
+
 			}
-	        	else if (rx_length == 0)
-	        	{
-	            		// If there are no data then ignore and wait
-	        	}
-	        	else
-	        	{
-	        		// Some bytes received
-	            		rx_buffer[rx_length] = '\0';
-		    		printDate();
-	            		print_hexbytes(rx_buffer, rx_length);
-	        	}
 		}
 	}
 }
