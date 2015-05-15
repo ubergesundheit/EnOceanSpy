@@ -1,0 +1,7 @@
+spy:
+  build: .
+  environment:
+    - ENOCEAN_SPY_DEVICE=/dev/ttyUSB0
+    - ENOCEAN_SPY_URL=http://some.url
+  devices:
+    - "/dev/ttyUSB0:/dev/ttyUSB0"
