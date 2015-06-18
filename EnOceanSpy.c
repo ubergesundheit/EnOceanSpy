@@ -36,8 +36,8 @@ main(int argc, char *argv[]) {
 
   char faft_addr[] = "01005170";
   char faft_addr2[] = "0088271E";
-  char faft_collection = "tmps_out";
-  char faft2_collection = "tmps_in1";
+  char faft_collection[] = "tmps_out";
+  char faft2_collection[] = "tmps_in1";
 
   // Check content of args
   if ((strcmp(device, "/dev/ttyUSB0") != 0) && (strcmp(device, "/dev/ttyAMA0") !=0) ) {
