@@ -33,14 +33,8 @@ main(int argc, char *argv[]) {
   char* url;
   url = getenv(ENV_URL);
 
-
-  // Check number of args
-  // if (argc > 2 || argc <=1 ) {
-  //   printf("Usage: EnOceanSpy <port_name>\n");
-  //   printf("       e.g. EnOceanSpy /dev/ttyUSB0 http://123.123.123.123/data \n");
-  //   return -1;
-  // }
-
+  char faft_addr[] = "01005170";
+  char faft_addr2[] = "01a05170";
 
   // Check content of args
   if ((strcmp(device, "/dev/ttyUSB0") != 0) && (strcmp(device, "/dev/ttyAMA0") !=0) ) {
@@ -89,6 +83,22 @@ main(int argc, char *argv[]) {
       } else if (rx_length == 24) {
         // Some bytes received
         rx_buffer[rx_length] = '\0';
+        int i;
+        for (i = 0; i < rx_length; i++) {
+          printf("%02X ", rx_buffer[i]);
+        }
+        printf("\n");
+
+        char address[8];
+        char collection[9];
+        sprintf(address, "%02X%02X%02X%02X", rx_buffer[11],rx_buffer[12], rx_buffer[13], rx_buffer[14]);
+
+        if(strcmp(faft_addr, address) == 0) {
+          strcpy(collection, "tmps_out");
+        }
+        if(strcmp(faft_addr2, address) == 0) {
+          strcpy(collection, "tmps_in0");
+        }
         struct tm *utc;
         time_t t;
         t = time(NULL);
@@ -109,9 +119,9 @@ main(int argc, char *argv[]) {
         // temperature
         temp = 0.32 * (double)rx_buffer[9] - 20.0;
 
-        char json[150];
+        char json[200];
 
-        sprintf(json, "{\"timestamp\":\"%s\",\"temp\":%.1f,\"hum\":%.1f,\"batt\":%.1f,\"raw_bytes\":\"%02X%02X%02X\"}", dt, temp, hum, volt, rx_buffer[7],rx_buffer[8], rx_buffer[9]);
+        sprintf(json, "{\"collection\":\"%s\",\"timestamp\":\"%s\",\"data\":{\"temp\":%.1f,\"hum\":%.1f,\"batt\":%.1f,\"raw_bytes\":\"%02X%02X%02X\",\"addr\":\"%s\"}}", collection, dt, temp, hum, volt, rx_buffer[7],rx_buffer[8], rx_buffer[9], address);
         printf("%s\n", json);
 
         // init curl

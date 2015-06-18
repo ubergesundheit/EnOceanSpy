@@ -9,6 +9,9 @@ Logs datagrams from a Eltako FAFT-60 to any url you want. Runs in Docker!
 
 `docker-compose up`
 
+## how to compile in docker
+- if you start from alpine `apk add --update curl-dev gcc g++` then `gcc -c EnOceanSpy.c` then `gcc -lcurl -o EnOceanSpy EnOceanSpy.o`
+
 # EnOceanSpy (Original Readme)
 
 Use your Raspberry Pi to log all incoming EnOcean telegrams with an USB300 stick.
