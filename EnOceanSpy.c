@@ -13,6 +13,7 @@
 #include <termios.h>    // Used for UART
 #include "time.h"
 #include <stdlib.h>
+#include <string.h>
 #include <curl/curl.h>
 
 #define ENV_DEVICE "ENOCEAN_SPY_DEVICE"
