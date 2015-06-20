@@ -3,5 +3,6 @@ spy:
   environment:
     - ENOCEAN_SPY_DEVICE=/dev/ttyUSB0
     - ENOCEAN_SPY_URL=http://some.url
+    - ENOCEAN_SPY_CREDENTIALS=<base 64 encoded username:password>
   devices:
     - "/dev/ttyUSB0:/dev/ttyUSB0"

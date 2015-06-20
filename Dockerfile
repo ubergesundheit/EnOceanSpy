@@ -1,8 +1,8 @@
-FROM alpine
+FROM armhfbuild/alpine:3.1
 
-RUN apk add --update curl-dev && rm -rf /var/cache/apk/*
+RUN apk add --update curl-dev gcc g++ && rm -rf /var/cache/apk/*
 
-COPY EnOceanSpy /usr/local/bin/EnOceanSpy
+COPY EnOceanSpy.c EnOceanSpy.c
 
-CMD ["EnOceanSpy"]
+CMD ["gcc -c EnOceanSpy.c && gcc -lcurl -o EnOceanSpy EnOceanSpy.o && ./EnOceanSpy"]
 

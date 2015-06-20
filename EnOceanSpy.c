@@ -18,10 +18,15 @@
 
 #define ENV_DEVICE "ENOCEAN_SPY_DEVICE"
 #define ENV_URL "ENOCEAN_SPY_URL"
+#define ENV_CREDENTIALS "ENOCEAN_SPY_CREDENTIALS"
 
+#define FAFT60_ADDR "01005170"
+#define FIFT63_ADDR "0088271E"
+
+#define FAFT60_COLLECTION "tmps_out"
+#define FIFT63_COLLECTION "tmps_in1"
 
 main(int argc, char *argv[]) {
-
   // check for presence of environment vars
 
   if (!getenv(ENV_DEVICE) || !getenv(ENV_URL)) {
@@ -29,15 +34,19 @@ main(int argc, char *argv[]) {
     return -1;
   }
 
+  int has_credentials = 0;
+  char credentials[200] = "Authorization: Basic ";
+
+  if (getenv(ENV_CREDENTIALS)) {
+    has_credentials = 1;
+    strcat(credentials, getenv(ENV_CREDENTIALS));
+    //credentials = getenv(ENV_CREDENTIALS);
+  }
+
   char* device;
   device = getenv(ENV_DEVICE);
   char* url;
   url = getenv(ENV_URL);
-
-  char faft_addr[] = "01005170";
-  char faft_addr2[] = "0088271E";
-  char faft_collection = "tmps_out";
-  char faft2_collection = "tmps_in1";
 
   // Check content of args
   if ((strcmp(device, "/dev/ttyUSB0") != 0) && (strcmp(device, "/dev/ttyAMA0") !=0) ) {
@@ -86,25 +95,21 @@ main(int argc, char *argv[]) {
       } else if (rx_length == 24) {
         // Some bytes received
         rx_buffer[rx_length] = '\0';
-        int i;
-        for (i = 0; i < rx_length; i++) {
-          printf("%02X ", rx_buffer[i]);
-        }
-        printf("\n");
 
-        char address[8];
+        char address[9];
         char collection[9];
         int is_my_device = 0;
         sprintf(address, "%02X%02X%02X%02X", rx_buffer[11],rx_buffer[12], rx_buffer[13], rx_buffer[14]);
 
-        if(strcmp(faft_addr, address) == 0) {
+        if (strcmp(FAFT60_ADDR, address) == 0) {
+          strcpy(collection, FAFT60_COLLECTION);
           is_my_device = 1;
-          strcpy(collection, faft_collection);
         }
-        if(strcmp(faft_addr2, address) == 0) {
+        if (strcmp(FIFT63_ADDR, address) == 0) {
+          strcpy(collection, FIFT63_COLLECTION);
           is_my_device = 1;
-          strcpy(collection, faft2_collection);
         }
+
         if(is_my_device == 1) {
           struct tm *utc;
           time_t t;
@@ -129,7 +134,7 @@ main(int argc, char *argv[]) {
           char json[200];
 
           sprintf(json, "{\"collection\":\"%s\",\"timestamp\":\"%s\",\"data\":{\"temp\":%.1f,\"hum\":%.1f,\"batt\":%.1f,\"raw_bytes\":\"%02X%02X%02X\",\"addr\":\"%s\"}}", collection, dt, temp, hum, volt, rx_buffer[7],rx_buffer[8], rx_buffer[9], address);
-          printf("%s\n", json);
+          printf("%s ", json);
 
           // init curl
           CURL *curl;
@@ -140,6 +145,9 @@ main(int argc, char *argv[]) {
           curl = curl_easy_init();
           if(curl) {
             struct curl_slist *headers = NULL;
+            if (has_credentials == 1) {
+              headers = curl_slist_append(headers, credentials);
+            }
             headers = curl_slist_append(headers, "Accept: application/json");
             headers = curl_slist_append(headers, "Content-Type: application/json");
             headers = curl_slist_append(headers, "charsets: utf-8");
@@ -158,6 +166,7 @@ main(int argc, char *argv[]) {
           }
 
           curl_global_cleanup();
+          printf("\n");
         }
       }
     }
