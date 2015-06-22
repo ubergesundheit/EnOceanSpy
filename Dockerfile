@@ -4,5 +4,5 @@ RUN apk add --update curl-dev gcc g++ && rm -rf /var/cache/apk/*
 
 COPY EnOceanSpy.c EnOceanSpy.c
 
-CMD ["gcc -c EnOceanSpy.c && gcc -lcurl -o EnOceanSpy EnOceanSpy.o && ./EnOceanSpy"]
+CMD sh -c 'gcc -c EnOceanSpy.c && gcc -lcurl -o EnOceanSpy EnOceanSpy.o && ./EnOceanSpy'
 
